@@ -1,4 +1,5 @@
 import cherrypy
+import random
 import threading
 import time
 
@@ -36,7 +37,22 @@ def non_blocking_quickstart(root=None, script_name="", config=None):
     #engine.block()
 
 
-CONSOLE_HTML = """
+DISPATCH_JS = """
+function dispatch(msg) {
+    if (msg === "--timeout--") {
+      // Do nothing, will re-poll
+      return null;
+    } else if (msg.indexOf("--newpage--") == 0) {
+      newpage = msg.substring("--newpage--".length, msg.length);
+      window.location.href = newpage;
+      return null;
+    } else {
+      return msg;
+    }
+}
+"""
+
+CONSOLE_HTML = ("""
 <html>
   <head>
   <style>
@@ -46,14 +62,16 @@ CONSOLE_HTML = """
 
     <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
     <script type="text/javascript">
-
+""" + DISPATCH_JS +
+"""
 function poll() {
   $.get("/poll", {}, function(xml) {
        setTimeout(function() {poll()}, 0);
-       if (xml != "--timeout--") {
+       xml = dispatch(xml);
+       if (xml != null) {
            // format and output result
            $('<p>' + xml + '</p>').insertBefore('#console');
-           $('html, body').animate({scrollTop: $(document).height()}, 'slow');
+           $('html, body').animate({scrollTop: $(document).height()}, 'fast');
        }
      });    
 }
@@ -67,28 +85,152 @@ $(document).ready(function() {
     <p id="console"></p>
   </body>
 </html>
+""")
+
+INDEX_HTML = """
+<html>
+  <head>
+
+    <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
+    <script type="text/javascript">
+
+$(document).ready(function() {
+  window.location.href = '%s';
+});
+    </script> 
+  </head>
+  <body>
+  </body>
+</html>
 """
 
+UI_HTML = ("""
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>%s</title>
+
+    <!-- Sets initial viewport load and disables zooming  -->
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+
+    <!-- Makes your prototype chrome-less once bookmarked to your phone's home screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+    <!-- Include the compiled Ratchet CSS -->
+    <link rel="stylesheet" href="/static/ratchet.css">
+
+    <!-- Include the compiled Ratchet JS -->
+    <script src="/static/ratchet.js"></script>
+    <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
+    <script type="text/javascript">
+""" + DISPATCH_JS +
+"""
+
+var BEFORE = "#end";
+
+function poll() {
+  $.get("/poll", {}, function(xml) {
+       setTimeout(function() {poll()}, 0);
+       xml = dispatch(xml);
+       if (xml != null) {
+         if (xml.indexOf('--addelement') == 0) {
+           var parts = xml.split('-');
+           e = parts[3];
+           eid = parts[4];
+           txt = parts[5];
+           $('<' + e + ' id="' + eid + '">' + txt + '</' + e + '>').insertBefore(BEFORE);
+         } else if (xml.indexOf('--updateinner') == 0) {
+           var parts = xml.split('-');
+           eid = parts[3];
+           txt = parts[4];
+           $('#' + eid).html(txt);
+         } else if (xml.indexOf('--addbutton') == 0) {
+           var parts = xml.split('-');
+           eid = parts[3];
+           txt = parts[4];
+           $('<a class="button" id="' + eid + '">' + txt + '</a>').insertBefore(BEFORE);
+           $('#' + eid).click(function(o) {
+              $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
+            });
+         } else if (xml.indexOf('--startspan') == 0) {
+           $('<span id="sp"><div id="espn"></span>').insertBefore('#end');
+           BEFORE = "#espn";
+         } else if (xml.indexOf('--endspan') == 0) {
+           BEFORE = "#end";
+         }
+           // format and output result
+           $('<p>' + xml + '</p>').insertBefore('#console');
+           $('html, body').animate({scrollTop: $(document).height()}, 'fast');
+       }
+     });    
+}
+
+$(document).ready(function() {
+  poll();
+});
+    </script> 
+  </head>
+  <body>
+
+  <!-- Make sure all your bars are the first things in your <body> -->
+  <header class="bar-title">
+    <h1 class="title">%s</h1>
+  </header>
+
+  <!-- Wrap all non-bar HTML in the .content div (this is actually what scrolls) -->
+  <div class="content">
+  <div class="content-padded">
+
+  <p id="end"></p>
+  </div>
+  </div>
+
+  </body>
+</html>
+""")
+
+
 class Handlers(object):
+
+    MAX_MESSAGES_TO_BUFFER = 40
 
     def __init__(self, lock):
         self._lock = lock
         self._msgs = []
+        self._current_page = '/'
+        self._current_page_title = ''
+        self._current_page_obj = None
 
     def index(self):
-        return self.msg
+        return INDEX_HTML % (self._current_page)
     index.exposed = True
+
+    def ui(self):
+        return UI_HTML % (self._current_page_title, self._current_page_title)
+    ui.exposed = True
 
     def console(self):
         return CONSOLE_HTML
     console.exposed = True
 
-    def new_page(self, page_name):
-        pass
+    def click(self, eid):
+        if self._current_page_obj:
+            self._current_page_obj.handle_click(eid)
+    click.exposed = True
+
+    def new_page(self, page_name, title='', page_obj=None):
+        self._current_page = '/' + page_name
+        self._current_page_title = title
+        self._current_page_obj = page_obj
+        self.enqueue('--newpage--%s' % page_name)
 
     def enqueue(self, msg):
         self._lock.acquire()
         self._msgs.insert(0, msg)
+        if len(self._msgs) > self.MAX_MESSAGES_TO_BUFFER:
+            self._msgs.pop()
         self._lock.release()
 
     def poll(self):
@@ -115,6 +257,61 @@ class PiUiConsole(object):
     def print_line(self, line):
         self._piui.print_line(line)
 
+
+class PiUiTextbox(object):
+
+    def __init__(self, text, element, piui):
+        self._piui = piui
+        self._id = 'textbox_' + str(int(random.uniform(0, 1e16)))
+        self._piui._handlers.enqueue('--addelement-%s-%s-%s' % (
+            element, self._id, text))
+
+    def set_text(self, text):
+        self._piui._handlers.enqueue('--updateinner-%s-%s' % (self._id, text))
+
+class PiUiButton(object):
+
+    def __init__(self, text, piui, on_click):
+        self._piui = piui
+        self._id = 'button_' + str(int(random.uniform(0, 1e16)))
+        self._piui._handlers.enqueue('--addbutton-%s-%s' % (self._id, text))
+        self._on_click = on_click
+
+    def set_text(self, text):
+        self._piui._handlers.enqueue('--updateinner-%s-%s' % (self._id, text))
+
+
+class PiUiPage(object):
+
+    def __init__(self, piui, title):
+        self._piui = piui
+        self._title = title
+        self._elements = []
+        self._buttons = {}
+
+    def add_textbox(self, text, element="p"):
+        txtbox = PiUiTextbox(text, element, self._piui)
+        self._elements.append(txtbox)
+        return txtbox
+
+    def add_button(self, text, on_click):
+        button = PiUiButton(text, self._piui, on_click)
+        self._elements.append(button)
+        self._buttons[button._id] = button
+        return button
+
+    def start_span(self):
+        self._piui._handlers.enqueue('--startspan')
+
+    def end_span(self):
+        self._piui._handlers.enqueue('--endspan')
+
+    def handle_click(self, eid):
+        button = self._buttons[eid]
+        if button:
+            button._on_click()
+
+
 class AndroidPiUi(object):
 
     def __init__(self):
@@ -125,8 +322,13 @@ class AndroidPiUi(object):
         non_blocking_quickstart(self._handlers, config=conf)
 
     def console(self):
-        self._handlers.new_page('/console')
+        self._handlers.new_page('console')
         return PiUiConsole(self)
+
+    def new_ui_page(self, title=''):
+        page = PiUiPage(self, title)
+        self._handlers.new_page('ui', title=title, page_obj=page)
+        return page
 
     def print_line(self, line):
         self._handlers.enqueue(line)
