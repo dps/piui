@@ -405,7 +405,8 @@ class AndroidPiUi(object):
     def __init__(self, img_dir=''):
         self._lock = threading.Lock()
         self._handlers = Handlers(self._lock)
-        cherrypy.config.update({'server.socket_port': 9999})
+        cherrypy.config.update({'server.socket_host': '0.0.0.0',
+                                'server.socket_port': 9999})
         conf = {'/static': 
                   {'tools.staticdir.on': True,
                    'tools.staticdir.dir': os.path.join(current_dir, 'static')},
