@@ -1,7 +1,7 @@
 import os
 import random
 import time
-from rpi import AndroidPiUi
+from piui import AndroidPiUi
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
