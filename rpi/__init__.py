@@ -159,10 +159,27 @@ function poll() {
            BEFORE = "#espn";
          } else if (xml.indexOf('--endspan') == 0) {
            BEFORE = "#end";
-         }
-           // format and output result
-           $('<p>' + xml + '</p>').insertBefore('#console');
-           $('html, body').animate({scrollTop: $(document).height()}, 'fast');
+         } else if (xml.indexOf('--addinput') == 0) {
+           var parts = xml.split('-');
+           eid = parts[3];
+           type = parts[4];
+           placeholder = parts[5];
+           $('<input id="' + eid + '" type="' + type +'" placeholder = "' + placeholder +'">').insertBefore(BEFORE);
+         } else if (xml.indexOf('--getinput') == 0) {
+           var parts = xml.split('-');
+           eid = parts[3];
+           $.get('/state?msg=' + $('#' + eid).val(), {}, function (r) {});
+         } else if (xml.indexOf('--addimage') == 0) {
+           var parts = xml.split('-');
+           eid = parts[3];
+           src = parts[4];
+           $('<img id="' + eid + '" src="/imgs/' + src +'">').insertBefore(BEFORE);
+         } else if (xml.indexOf('--setimagesrc') == 0) {
+           var parts = xml.split('-');
+           eid = parts[3];
+           src = parts[4];
+           $('#' + eid).attr('src', '/imgs/' + src);
+         } 
        }
      });    
 }
@@ -202,8 +219,10 @@ class Handlers(object):
         self._current_page = '/'
         self._current_page_title = ''
         self._current_page_obj = None
+        self._in_buffer = []
 
     def index(self):
+        print self._current_page
         return INDEX_HTML % (self._current_page)
     index.exposed = True
 
@@ -224,6 +243,7 @@ class Handlers(object):
         self._current_page = '/' + page_name
         self._current_page_title = title
         self._current_page_obj = page_obj
+        self.flush_queue()
         self.enqueue('--newpage--%s' % page_name)
 
     def enqueue(self, msg):
@@ -231,6 +251,35 @@ class Handlers(object):
         self._msgs.insert(0, msg)
         if len(self._msgs) > self.MAX_MESSAGES_TO_BUFFER:
             self._msgs.pop()
+        self._lock.release()
+
+    def enqueue_and_result(self, msg):
+        self._lock.acquire()
+        self._msgs.insert(0, msg)
+        if len(self._msgs) > self.MAX_MESSAGES_TO_BUFFER:
+            self._msgs.pop()
+        done = False
+        self._lock.release()
+        while not done:
+            time.sleep(0.1)
+            self._lock.acquire()
+            done = len(self._msgs) == 0
+            self._lock.release()
+        ready = False
+        result = None
+        while not ready:
+            time.sleep(0.1)
+            self._lock.acquire()
+            ready = len(self._in_buffer) > 0
+            if ready:
+                result = self._in_buffer.pop()
+            self._lock.release()
+        return result
+
+
+    def flush_queue(self):
+        self._lock.acquire()
+        self._msgs = []
         self._lock.release()
 
     def poll(self):
@@ -247,6 +296,12 @@ class Handlers(object):
             waited = waited + 1
         return "--timeout--"
     poll.exposed = True
+
+    def state(self, msg):
+        self._lock.acquire()
+        self._in_buffer.append(msg)
+        self._lock.release()
+    state.exposed = True
 
 
 class PiUiConsole(object):
@@ -269,6 +324,17 @@ class PiUiTextbox(object):
     def set_text(self, text):
         self._piui._handlers.enqueue('--updateinner-%s-%s' % (self._id, text))
 
+class PiUiInput(object):
+
+    def __init__(self, input_type, piui, placeholder):
+        self._piui = piui
+        self._id = 'input_' + str(int(random.uniform(0, 1e16)))
+        self._piui._handlers.enqueue('--addinput-%s-%s-%s' % (self._id, input_type, placeholder))
+
+    def get_text(self):
+        text = self._piui._handlers.enqueue_and_result('--getinput-%s' % (self._id))
+        return text
+
 class PiUiButton(object):
 
     def __init__(self, text, piui, on_click):
@@ -280,6 +346,16 @@ class PiUiButton(object):
     def set_text(self, text):
         self._piui._handlers.enqueue('--updateinner-%s-%s' % (self._id, text))
 
+class PiUiImage(object):
+
+    def __init__(self, src, piui):
+        self._piui = piui
+        self._id = 'image_' + str(int(random.uniform(0, 1e16)))
+        self._piui._handlers.enqueue('--addimage-%s-%s' % (self._id, src))
+
+    def set_src(self, src):
+        self._piui._handlers.enqueue('--setimagesrc-%s-%s' % (self._id, src))
+
 
 class PiUiPage(object):
 
@@ -288,6 +364,7 @@ class PiUiPage(object):
         self._title = title
         self._elements = []
         self._buttons = {}
+        self._inputs = {}
 
     def add_textbox(self, text, element="p"):
         txtbox = PiUiTextbox(text, element, self._piui)
@@ -300,11 +377,22 @@ class PiUiPage(object):
         self._buttons[button._id] = button
         return button
 
+    def add_input(self, input_type, placeholder=""):
+        edit = PiUiInput(input_type, self._piui, placeholder)
+        self._elements.append(edit)
+        self._inputs[edit._id] = edit
+        return edit
+
     def start_span(self):
         self._piui._handlers.enqueue('--startspan')
 
     def end_span(self):
         self._piui._handlers.enqueue('--endspan')
+
+    def add_image(self, src):
+        img = PiUiImage(src, self._piui)
+        self._elements.append(img)
+        return img
 
     def handle_click(self, eid):
         button = self._buttons[eid]
@@ -314,11 +402,16 @@ class PiUiPage(object):
 
 class AndroidPiUi(object):
 
-    def __init__(self):
+    def __init__(self, img_dir=''):
         self._lock = threading.Lock()
         self._handlers = Handlers(self._lock)
         cherrypy.config.update({'server.socket_port': 9999})
-        conf = {'/static': {'tools.staticdir.on': True, 'tools.staticdir.dir': os.path.join(current_dir, 'static')}}
+        conf = {'/static': 
+                  {'tools.staticdir.on': True,
+                   'tools.staticdir.dir': os.path.join(current_dir, 'static')},
+                '/imgs':
+                  {'tools.staticdir.on': True,
+                   'tools.staticdir.dir': img_dir}}
         non_blocking_quickstart(self._handlers, config=conf)
 
     def console(self):
