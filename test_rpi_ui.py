@@ -21,11 +21,16 @@ def onhelloclick():
 def onpicclick():
     img.set_src("sunset2.png")
 
+def onconsoleclick():
+    con = ui.console()
+    con.print_line("Hello Console!")
+
 title = None
 txt = None
 img = None
+ui = None
 def main():
-    global title, txt, img
+    global title, txt, img, ui
     ui = AndroidPiUi(img_dir=os.path.join(current_dir, 'imgs'))
 
     con = ui.console()
@@ -44,6 +49,7 @@ def main():
     txtbox = page.add_textbox("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam tortor leo, posuere id mattis ut, sollicitudin vitae massa. Nulla lacus metus, aliquam vel dapibus ac, vehicula sit amet nisi. In vel enim leo. Ut tellus sem, blandit et porttitor in, rhoncus eget mi. Aliquam tristique, sem eu tincidunt rhoncus, libero mi placerat libero, et tincidunt nisi eros eget lectus. Aliquam commodo nulla nec diam hendrerit molestie. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae;")
     plus = page.add_button("&uarr;", onupclick)
     minus = page.add_button("&darr;", ondownclick)
+    cons = page.add_button("Console", onconsoleclick)
     img = page.add_image("sunset.png")
     time.sleep(5)
     title.set_text("Foo the bar baz.")
