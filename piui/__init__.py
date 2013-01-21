@@ -179,7 +179,35 @@ function poll() {
            eid = parts[3];
            src = parts[4];
            $('#' + eid).attr('src', '/imgs/' + src);
-         } 
+         } else if (xml.indexOf('--addul') == 0) {
+           var parts = xml.split('-');
+           eid = parts[3];
+           $('<ul class="list" id="' + eid + '" ></ul>').insertBefore(BEFORE);
+         } else if (xml.indexOf('--addli') == 0) {
+         //self._id, self._parent_id, item_text, ch_flag, tg_flag
+           var parts = xml.split('-');
+           eid = parts[3];
+           pid = parts[4];
+           txt = parts[5];
+           chevron = "";
+           if (parts[6] == '1') {
+             chevron = "<span class='chevron'></span>";
+           }
+           toggle = "";
+           tid = parts[8];
+           if (parts[7] == '1') {
+             toggle = "<div class='toggle' id='" + tid + "'><div class='toggle-handle'></div></div>";
+           }
+           new_html = "<li  id='" + eid + "'><a>" + txt + toggle + chevron + "</a></li>";
+           $('#' + pid).append(new_html);
+           $('#' + eid).click(function(o) {
+              $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
+            });
+           document.querySelector('#' + tid).addEventListener('toggle',
+              function(event) {
+                $.get('/toggle?eid=' + $(this).attr('id') +'&v=' + event["detail"]["isActive"]);
+              });
+         }
        }
      });    
 }
@@ -238,6 +266,11 @@ class Handlers(object):
         if self._current_page_obj:
             self._current_page_obj.handle_click(eid)
     click.exposed = True
+
+    def toggle(self, eid, v):
+        if self._current_page_obj:
+            self._current_page_obj.handle_toggle(eid, v)
+    toggle.exposed = True
 
     def new_page(self, page_name, title='', page_obj=None):
         self._current_page = '/' + page_name
@@ -335,6 +368,39 @@ class PiUiInput(object):
         text = self._piui._handlers.enqueue_and_result('--getinput-%s' % (self._id))
         return text
 
+class PiUiListItem(object):
+
+    def __init__(self, piui, parent_id, item_text, chevron, toggle, onclick, ontoggle):
+        self._piui = piui
+        self._parent_id = parent_id
+        self._on_click = onclick
+        self._on_toggle = ontoggle
+        self._id = 'li_' + str(int(random.uniform(0, 1e16)))
+        self._toggle_id = 'tg_' + str(int(random.uniform(0, 1e16)))
+        ch_flag = '0'
+        tg_flag = '0'
+        if chevron:
+          ch_flag = '1'
+        if toggle:
+          tg_flag = '1'
+        self._piui._handlers.enqueue('--addli-%s-%s-%s-%s-%s-%s' %
+            (self._id, self._parent_id, item_text, ch_flag, tg_flag, self._toggle_id))
+
+class PiUiList(object):
+    """A PiUi page element representing an HTML <ul>."""
+    def __init__(self, piui, page):
+        self._piui = piui
+        self._page = page
+        self._id = 'ul_' + str(int(random.uniform(0, 1e16)))
+        self._piui._handlers.enqueue('--addul-%s' % (self._id))
+
+    def add_item(self, item_text, chevron=False, toggle=False, onclick=None, ontoggle=None):
+        item = PiUiListItem(self._piui, self._id, item_text,
+                            chevron, toggle, onclick, ontoggle)
+        self._page._clickables[item._id] = item
+        self._page._toggleables[item._toggle_id] = item
+        return item
+
 class PiUiButton(object):
 
     def __init__(self, text, piui, on_click):
@@ -363,7 +429,8 @@ class PiUiPage(object):
         self._piui = piui
         self._title = title
         self._elements = []
-        self._buttons = {}
+        self._clickables = {}
+        self._toggleables = {}
         self._inputs = {}
 
     def add_textbox(self, text, element="p"):
@@ -371,10 +438,15 @@ class PiUiPage(object):
         self._elements.append(txtbox)
         return txtbox
 
+    def add_element(self, element):
+        ele = PiUiTextbox("", element, self._piui)
+        self._elements.append(ele)
+        return ele
+
     def add_button(self, text, on_click):
         button = PiUiButton(text, self._piui, on_click)
         self._elements.append(button)
-        self._buttons[button._id] = button
+        self._clickables[button._id] = button
         return button
 
     def add_input(self, input_type, placeholder=""):
@@ -394,10 +466,24 @@ class PiUiPage(object):
         self._elements.append(img)
         return img
 
+    def add_list(self):
+        new_list = PiUiList(self._piui, self)
+        self._elements.append(new_list)
+        return new_list
+
     def handle_click(self, eid):
-        button = self._buttons[eid]
-        if button:
+        button = self._clickables[eid]
+        if button and button._on_click:
             button._on_click()
+
+    def handle_toggle(self, eid, value):
+        print "handle_toggle " + eid + " " + value
+        toggle = self._toggleables[eid]
+        val = False
+        if (value == 'true'):
+          val = True
+        if toggle and toggle._on_toggle:
+            toggle._on_toggle(val)
 
 
 class AndroidPiUi(object):
