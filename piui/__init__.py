@@ -1,10 +1,13 @@
 import cherrypy
+import json
 import random
 import threading
 import time
 
 import os.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
+
+je = json.JSONEncoder()
 
 def non_blocking_quickstart(root=None, script_name="", config=None):
     """Mount the given root, start the builtin server (and engine), then block.
@@ -61,23 +64,11 @@ CONSOLE_HTML = ("""
 </style>
 
     <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
+    <script type="text/javascript" src="/static/piui.js"></script>
     <script type="text/javascript">
-""" + DISPATCH_JS +
-"""
-function poll() {
-  $.get("/poll", {}, function(xml) {
-       setTimeout(function() {poll()}, 0);
-       xml = dispatch(xml);
-       if (xml != null) {
-           // format and output result
-           $('<p>' + xml + '</p>').insertBefore('#console');
-           $('html, body').animate({scrollTop: $(document).height()}, 'fast');
-       }
-     });    
-}
 
 $(document).ready(function() {
-  poll();
+  consolePoll();
 });
     </script> 
   </head>
@@ -124,93 +115,8 @@ UI_HTML = ("""
     <!-- Include the compiled Ratchet JS -->
     <script src="/static/ratchet.js"></script>
     <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
+    <script type="text/javascript" src="/static/piui.js"></script>
     <script type="text/javascript">
-""" + DISPATCH_JS +
-"""
-
-var BEFORE = "#end";
-
-function poll() {
-  $.get("/poll", {}, function(xml) {
-       setTimeout(function() {poll()}, 0);
-       xml = dispatch(xml);
-       if (xml != null) {
-         if (xml.indexOf('--addelement') == 0) {
-           var parts = xml.split('-');
-           e = parts[3];
-           eid = parts[4];
-           txt = parts[5];
-           $('<' + e + ' id="' + eid + '">' + txt + '</' + e + '>').insertBefore(BEFORE);
-         } else if (xml.indexOf('--updateinner') == 0) {
-           var parts = xml.split('-');
-           eid = parts[3];
-           txt = parts[4];
-           $('#' + eid).html(txt);
-         } else if (xml.indexOf('--addbutton') == 0) {
-           var parts = xml.split('-');
-           eid = parts[3];
-           txt = parts[4];
-           $('<a class="button" id="' + eid + '">' + txt + '</a>').insertBefore(BEFORE);
-           $('#' + eid).click(function(o) {
-              $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
-            });
-         } else if (xml.indexOf('--startspan') == 0) {
-           $('<span id="sp"><div id="espn"></span>').insertBefore('#end');
-           BEFORE = "#espn";
-         } else if (xml.indexOf('--endspan') == 0) {
-           BEFORE = "#end";
-         } else if (xml.indexOf('--addinput') == 0) {
-           var parts = xml.split('-');
-           eid = parts[3];
-           type = parts[4];
-           placeholder = parts[5];
-           $('<input id="' + eid + '" type="' + type +'" placeholder = "' + placeholder +'">').insertBefore(BEFORE);
-         } else if (xml.indexOf('--getinput') == 0) {
-           var parts = xml.split('-');
-           eid = parts[3];
-           $.get('/state?msg=' + $('#' + eid).val(), {}, function (r) {});
-         } else if (xml.indexOf('--addimage') == 0) {
-           var parts = xml.split('-');
-           eid = parts[3];
-           src = parts[4];
-           $('<img id="' + eid + '" src="/imgs/' + src +'">').insertBefore(BEFORE);
-         } else if (xml.indexOf('--setimagesrc') == 0) {
-           var parts = xml.split('-');
-           eid = parts[3];
-           src = parts[4];
-           $('#' + eid).attr('src', '/imgs/' + src);
-         } else if (xml.indexOf('--addul') == 0) {
-           var parts = xml.split('-');
-           eid = parts[3];
-           $('<ul class="list" id="' + eid + '" ></ul>').insertBefore(BEFORE);
-         } else if (xml.indexOf('--addli') == 0) {
-         //self._id, self._parent_id, item_text, ch_flag, tg_flag
-           var parts = xml.split('-');
-           eid = parts[3];
-           pid = parts[4];
-           txt = parts[5];
-           chevron = "";
-           if (parts[6] == '1') {
-             chevron = "<span class='chevron'></span>";
-           }
-           toggle = "";
-           tid = parts[8];
-           if (parts[7] == '1') {
-             toggle = "<div class='toggle' id='" + tid + "'><div class='toggle-handle'></div></div>";
-           }
-           new_html = "<li  id='" + eid + "'><a>" + txt + toggle + chevron + "</a></li>";
-           $('#' + pid).append(new_html);
-           $('#' + eid).click(function(o) {
-              $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
-            });
-           document.querySelector('#' + tid).addEventListener('toggle',
-              function(event) {
-                $.get('/toggle?eid=' + $(this).attr('id') +'&v=' + event["detail"]["isActive"]);
-              });
-         }
-       }
-     });    
-}
 
 $(document).ready(function() {
   poll();
@@ -277,7 +183,7 @@ class Handlers(object):
         self._current_page_title = title
         self._current_page_obj = page_obj
         self.flush_queue()
-        self.enqueue('--newpage--%s' % page_name)
+        self.enqueue({"cmd": "newpage", "page": page_name})
 
     def enqueue(self, msg):
         self._lock.acquire()
@@ -324,10 +230,10 @@ class Handlers(object):
                 msg = self._msgs.pop()
             self._lock.release()
             if msg:
-                return msg
+                return je.encode(msg)
             time.sleep(0.01)
             waited = waited + 1
-        return "--timeout--"
+        return je.encode({'cmd': 'timeout'})
     poll.exposed = True
 
     def state(self, msg):
@@ -343,7 +249,7 @@ class PiUiConsole(object):
         self._piui = piui
 
     def print_line(self, line):
-        self._piui.print_line(line)
+        self._piui._handlers.enqueue({"cmd": "print", "msg": line})
 
 
 class PiUiTextbox(object):
@@ -351,21 +257,24 @@ class PiUiTextbox(object):
     def __init__(self, text, element, piui):
         self._piui = piui
         self._id = 'textbox_' + str(int(random.uniform(0, 1e16)))
-        self._piui._handlers.enqueue('--addelement-%s-%s-%s' % (
-            element, self._id, text))
+        self._piui._handlers.enqueue(
+            {'cmd': 'addelement', 'e': element, 'eid': self._id, 'txt': text})
 
     def set_text(self, text):
-        self._piui._handlers.enqueue('--updateinner-%s-%s' % (self._id, text))
+        self._piui._handlers.enqueue(
+          {'cmd': 'updateinner', 'eid': self._id, 'txt': text})
 
 class PiUiInput(object):
 
     def __init__(self, input_type, piui, placeholder):
         self._piui = piui
         self._id = 'input_' + str(int(random.uniform(0, 1e16)))
-        self._piui._handlers.enqueue('--addinput-%s-%s-%s' % (self._id, input_type, placeholder))
+        self._piui._handlers.enqueue(
+            {'cmd': 'addinput', 'eid': self._id, 'type': input_type,
+             'placeholder': placeholder})
 
     def get_text(self):
-        text = self._piui._handlers.enqueue_and_result('--getinput-%s' % (self._id))
+        text = self._piui._handlers.enqueue_and_result({'cmd': 'getinput', 'eid': self._id})
         return text
 
 class PiUiListItem(object):
@@ -383,8 +292,8 @@ class PiUiListItem(object):
           ch_flag = '1'
         if toggle:
           tg_flag = '1'
-        self._piui._handlers.enqueue('--addli-%s-%s-%s-%s-%s-%s' %
-            (self._id, self._parent_id, item_text, ch_flag, tg_flag, self._toggle_id))
+        self._piui._handlers.enqueue({'cmd': 'addli', 'eid': self._id, 'pid': self._parent_id,
+            'txt': item_text, 'chevron': ch_flag, 'toggle': tg_flag, 'tid': self._toggle_id})
 
 class PiUiList(object):
     """A PiUi page element representing an HTML <ul>."""
@@ -392,7 +301,7 @@ class PiUiList(object):
         self._piui = piui
         self._page = page
         self._id = 'ul_' + str(int(random.uniform(0, 1e16)))
-        self._piui._handlers.enqueue('--addul-%s' % (self._id))
+        self._piui._handlers.enqueue({'cmd': 'addul', 'eid': self._id})
 
     def add_item(self, item_text, chevron=False, toggle=False, onclick=None, ontoggle=None):
         item = PiUiListItem(self._piui, self._id, item_text,
@@ -406,22 +315,23 @@ class PiUiButton(object):
     def __init__(self, text, piui, on_click):
         self._piui = piui
         self._id = 'button_' + str(int(random.uniform(0, 1e16)))
-        self._piui._handlers.enqueue('--addbutton-%s-%s' % (self._id, text))
+        self._piui._handlers.enqueue({'cmd': 'addbutton', 'eid': self._id, 'txt': text})
         self._on_click = on_click
 
     def set_text(self, text):
-        self._piui._handlers.enqueue('--updateinner-%s-%s' % (self._id, text))
+        self._piui._handlers.enqueue({'cmd': 'updateinner', 'eid': self._id, 'txt': text})
+
 
 class PiUiImage(object):
 
     def __init__(self, src, piui):
         self._piui = piui
         self._id = 'image_' + str(int(random.uniform(0, 1e16)))
-        self._piui._handlers.enqueue('--addimage-%s-%s' % (self._id, src))
+        self._piui._handlers.enqueue(
+            {'cmd': 'addimage', 'eid': self._id, 'src': src})
 
     def set_src(self, src):
-        self._piui._handlers.enqueue('--setimagesrc-%s-%s' % (self._id, src))
-
+        self._piui._handlers.enqueue({'cmd': 'setimagesrc', 'eid': self._id, 'src': src})
 
 class PiUiPage(object):
 
@@ -456,10 +366,10 @@ class PiUiPage(object):
         return edit
 
     def start_span(self):
-        self._piui._handlers.enqueue('--startspan')
+        self._piui._handlers.enqueue({'cmd': 'startspan'})
 
     def end_span(self):
-        self._piui._handlers.enqueue('--endspan')
+        self._piui._handlers.enqueue({'cmd': 'endspan'})
 
     def add_image(self, src):
         img = PiUiImage(src, self._piui)
@@ -477,7 +387,6 @@ class PiUiPage(object):
             button._on_click()
 
     def handle_toggle(self, eid, value):
-        print "handle_toggle " + eid + " " + value
         toggle = self._toggleables[eid]
         val = False
         if (value == 'true'):
@@ -509,9 +418,6 @@ class AndroidPiUi(object):
         page = PiUiPage(self, title)
         self._handlers.new_page('ui', title=title, page_obj=page)
         return page
-
-    def print_line(self, line):
-        self._handlers.enqueue(line)
 
     def done(self):
         cherrypy.engine.block()
