@@ -45,11 +45,6 @@ function poll() {
            $('#' + msg.eid).click(function(o) {
               $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
             });
-         } else if (msg.cmd === "startspan") {
-           $('<span id="sp"><div id="espn" /></span>').insertBefore('#end');
-           BEFORE = "#espn";           
-         } else if (msg.cmd === "endspan") {
-           BEFORE = "#end";
          } else if (msg.cmd === "addinput") {
            $('<input id="' + msg.eid + '" type="' + msg["type"] +'" placeholder = "' + msg.placeholder +'">').insertBefore(BEFORE);
          } else if (msg.cmd === "getinput") {

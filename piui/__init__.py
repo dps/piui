@@ -40,28 +40,13 @@ def non_blocking_quickstart(root=None, script_name="", config=None):
     #engine.block()
 
 
-DISPATCH_JS = """
-function dispatch(msg) {
-    if (msg === "--timeout--") {
-      // Do nothing, will re-poll
-      return null;
-    } else if (msg.indexOf("--newpage--") == 0) {
-      newpage = msg.substring("--newpage--".length, msg.length);
-      window.location.href = newpage;
-      return null;
-    } else {
-      return msg;
-    }
-}
-"""
-
 CONSOLE_HTML = ("""
 <html>
   <head>
   <style>
     p {font-family: monospace;color: #fff;}
     body {background-color: #000;}
-</style>
+  </style>
 
     <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
     <script type="text/javascript" src="/static/piui.js"></script>
@@ -101,18 +86,11 @@ UI_HTML = ("""
   <head>
     <meta charset="utf-8">
     <title>%s</title>
-
-    <!-- Sets initial viewport load and disables zooming  -->
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
-
-    <!-- Makes your prototype chrome-less once bookmarked to your phone's home screen -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-    <!-- Include the compiled Ratchet CSS -->
     <link rel="stylesheet" href="/static/ratchet.css">
-
-    <!-- Include the compiled Ratchet JS -->
     <script src="/static/ratchet.js"></script>
     <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
     <script type="text/javascript" src="/static/piui.js"></script>
@@ -124,13 +102,10 @@ $(document).ready(function() {
     </script> 
   </head>
   <body>
-
-  <!-- Make sure all your bars are the first things in your <body> -->
   <header class="bar-title">
     <h1 class="title">%s</h1>
   </header>
 
-  <!-- Wrap all non-bar HTML in the .content div (this is actually what scrolls) -->
   <div class="content">
   <div class="content-padded">
 
@@ -364,12 +339,6 @@ class PiUiPage(object):
         self._elements.append(edit)
         self._inputs[edit._id] = edit
         return edit
-
-    def start_span(self):
-        self._piui._handlers.enqueue({'cmd': 'startspan'})
-
-    def end_span(self):
-        self._piui._handlers.enqueue({'cmd': 'endspan'})
 
     def add_image(self, src):
         img = PiUiImage(src, self._piui)
