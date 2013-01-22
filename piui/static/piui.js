@@ -36,7 +36,9 @@ function poll() {
        setTimeout(function() {poll()}, 0);
        msg = dispatch(xml);
        if (msg != null) {
-         if (msg.cmd === "addelement") {
+         if (msg.cmd === "postpage") {
+           $('#hdr').append('<a href="#"" class="button-prev">' + msg.prevtxt + '</a>');
+         } if (msg.cmd === "addelement") {
            $('<' + msg.e + ' id="' + msg.eid + '">' + msg.txt + '</' + msg.e + '>').insertBefore(BEFORE)
          } else if (msg.cmd === "updateinner") {
            $('#' + msg.eid).html(msg.txt);
@@ -44,7 +46,7 @@ function poll() {
            $('<a class="button" id="' + msg.eid + '">' + msg.txt + '</a>').insertBefore(BEFORE);
            $('#' + msg.eid).click(function(o) {
               $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
-            });
+           });
          } else if (msg.cmd === "addinput") {
            $('<input id="' + msg.eid + '" type="' + msg["type"] +'" placeholder = "' + msg.placeholder +'">').insertBefore(BEFORE);
          } else if (msg.cmd === "getinput") {
@@ -65,7 +67,7 @@ function poll() {
              toggle = "<div class='toggle' id='" + msg.tid +
                  "'><div class='toggle-handle'></div></div>";
            }
-           new_html = "<li  id='" + msg.eid + "'><a>" + msg.txt + toggle + chevron + "</a></li>";
+           new_html = "<li id='" + msg.eid + "'><a>" + msg.txt + toggle + chevron + "</a></li>";
            $('#' + msg.pid).append(new_html);
            $('#' + msg.eid).click(function(o) {
               $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});

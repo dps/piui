@@ -10,7 +10,10 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 je = json.JSONEncoder()
 
 def non_blocking_quickstart(root=None, script_name="", config=None):
-    """Mount the given root, start the builtin server (and engine), then block.
+    """This function is an exact copy of cherrypy's quickstart which does
+    not block when it's done.
+
+    Mount the given root, start the builtin server (and engine), then block.
     
     root: an instance of a "controller class" (a collection of page handler
         methods) which represents the root of the application.
@@ -102,7 +105,7 @@ $(document).ready(function() {
     </script> 
   </head>
   <body>
-  <header class="bar-title">
+  <header class="bar-title" id="hdr">
     <h1 class="title">%s</h1>
   </header>
 
@@ -308,15 +311,30 @@ class PiUiImage(object):
     def set_src(self, src):
         self._piui._handlers.enqueue({'cmd': 'setimagesrc', 'eid': self._id, 'src': src})
 
+class ClickWrapper(object):
+
+  def __init__(self, onclick):
+    self._on_click = onclick
+
+
 class PiUiPage(object):
 
-    def __init__(self, piui, title):
+    def __init__(self, piui, title, prev_text, onprevclick):
         self._piui = piui
         self._title = title
+        self._prev_text = prev_text
+        self._onprevclick = onprevclick
         self._elements = []
         self._clickables = {}
         self._toggleables = {}
         self._inputs = {}
+
+    def postPush(self):
+        if self._prev_text and self._onprevclick:
+          self._prev_id = 'button_' + str(int(random.uniform(0, 1e16)))
+          self._piui._handlers.enqueue({'cmd': 'pagepost',
+              'previd': self._prev_id, 'prevtxt': self._prev_text})
+          self._clickables[self._prev_id] = ClickWrapper(self._onprevclick)
 
     def add_textbox(self, text, element="p"):
         txtbox = PiUiTextbox(text, element, self._piui)
@@ -383,9 +401,10 @@ class AndroidPiUi(object):
         self._handlers.new_page('console')
         return PiUiConsole(self)
 
-    def new_ui_page(self, title=''):
+    def new_ui_page(self, title='', prev_text='', onprevclick=None):
         page = PiUiPage(self, title)
         self._handlers.new_page('ui', title=title, page_obj=page)
+        page.postPush()
         return page
 
     def done(self):
