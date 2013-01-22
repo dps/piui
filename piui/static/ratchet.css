@@ -729,7 +729,7 @@ select {
   position: relative;
   display: inline-block;
   padding: 4px 12px;
-  margin: 6px;
+  /*margin: 6px;*/
   font-weight: bold;
   line-height: 18px;
   color: #333;

@@ -36,8 +36,12 @@ function poll() {
        setTimeout(function() {poll()}, 0);
        msg = dispatch(xml);
        if (msg != null) {
-         if (msg.cmd === "postpage") {
-           $('#hdr').append('<a href="#"" class="button-prev">' + msg.prevtxt + '</a>');
+         if (msg.cmd === "pagepost") {
+           $('#hdr').prepend('<a href="#" id="' + msg.previd + '" class="button-prev">' + msg.prevtxt + '</a>');
+           $('#' + msg.previd).click(function(o) {
+              $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
+           });
+           $('#padded').toggleClass('content-padded');
          } if (msg.cmd === "addelement") {
            $('<' + msg.e + ' id="' + msg.eid + '">' + msg.txt + '</' + msg.e + '>').insertBefore(BEFORE)
          } else if (msg.cmd === "updateinner") {
@@ -69,13 +73,16 @@ function poll() {
            }
            new_html = "<li id='" + msg.eid + "'><a>" + msg.txt + toggle + chevron + "</a></li>";
            $('#' + msg.pid).append(new_html);
+           if (msg.toggle === '1') {
+               document.querySelector('#' + msg.tid).addEventListener('toggle',
+                  function(event) {
+                    $.get('/toggle?eid=' + $(this).attr('id') +'&v=' + event["detail"]["isActive"]);
+                  });
+           }
+
            $('#' + msg.eid).click(function(o) {
               $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
             });
-           document.querySelector('#' + tid).addEventListener('toggle',
-              function(event) {
-                $.get('/toggle?eid=' + $(this).attr('id') +'&v=' + event["detail"]["isActive"]);
-              });
          }
        }
      });    

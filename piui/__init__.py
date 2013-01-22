@@ -47,7 +47,7 @@ CONSOLE_HTML = ("""
 <html>
   <head>
   <style>
-    p {font-family: monospace;color: #fff;}
+    p {font-family: monospace;color: #fff;font-size:14pt;}
     body {background-color: #000;}
   </style>
 
@@ -110,8 +110,7 @@ $(document).ready(function() {
   </header>
 
   <div class="content">
-  <div class="content-padded">
-
+  <div class="" id="padded">
   <p id="end"></p>
   </div>
   </div>
@@ -382,7 +381,7 @@ class PiUiPage(object):
             toggle._on_toggle(val)
 
 
-class AndroidPiUi(object):
+class PiUi(object):
 
     def __init__(self, img_dir=''):
         self._lock = threading.Lock()
@@ -401,8 +400,8 @@ class AndroidPiUi(object):
         self._handlers.new_page('console')
         return PiUiConsole(self)
 
-    def new_ui_page(self, title='', prev_text='', onprevclick=None):
-        page = PiUiPage(self, title)
+    def new_ui_page(self, title='', prev_text=None, onprevclick=None):
+        page = PiUiPage(self, title, prev_text, onprevclick)
         self._handlers.new_page('ui', title=title, page_obj=page)
         page.postPush()
         return page
