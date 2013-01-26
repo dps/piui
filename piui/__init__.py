@@ -67,7 +67,7 @@ $(document).ready(function() {
 """)
 
 INDEX_HTML = """
-<html>
+<html manifest="static/manifest.appcache">
   <head>
 
     <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
@@ -92,6 +92,7 @@ UI_HTML = ("""
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon" href="static/icon.png">
 
     <link rel="stylesheet" href="/static/ratchet.css">
     <script src="/static/ratchet.js"></script>
@@ -144,6 +145,11 @@ class Handlers(object):
     def console(self):
         return CONSOLE_HTML
     console.exposed = True
+
+    def ping(self):
+        return "pong"
+    ping.exposed = True
+
 
     def click(self, eid):
         if self._current_page_obj:
@@ -390,7 +396,8 @@ class PiUi(object):
                                 'server.socket_port': 9999})
         conf = {'/static': 
                   {'tools.staticdir.on': True,
-                   'tools.staticdir.dir': os.path.join(current_dir, 'static')},
+                   'tools.staticdir.dir': os.path.join(current_dir, 'static'),
+                   'tools.staticdir.content_types': {'appcache': 'text/cache-manifest'}},
                 '/imgs':
                   {'tools.staticdir.on': True,
                    'tools.staticdir.dir': img_dir}}
@@ -406,5 +413,13 @@ class PiUi(object):
         page.postPush()
         return page
 
+    def get_location(self):
+        text = self._handlers.enqueue_and_result({'cmd': 'geolocation'})
+        print text
+        return text
+
     def done(self):
         cherrypy.engine.block()
+
+    def exit(self):
+        cherrypy.engine.stop()

@@ -82,7 +82,8 @@ class DemoPiUi(object):
         self.ui.done()
 
     def onupclick(self):
-        self.title.set_text("Up")
+        self.ui.get_location()
+        self.title.set_text("Up ")
         print "Up"
 
     def ondownclick(self):

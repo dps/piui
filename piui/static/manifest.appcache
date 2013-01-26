@@ -1,0 +1,19 @@
+CACHE MANIFEST
+
+CACHE:
+# Offline cache v1
+# html files
+index.html
+
+# css & js files
+/static/jquery-1.9.0.min.js
+/static/piui.js
+/static/ratchet.css
+/static/ratchet.js
+
+NETWORK:
+
+/poll
+/state
+/click
+/toggle
