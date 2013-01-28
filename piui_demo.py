@@ -46,6 +46,7 @@ class DemoPiUi(object):
     def page_images(self):
         self.page = self.ui.new_ui_page(title="Images", prev_text="Back", onprevclick=self.main_menu)
         self.img = self.page.add_image("sunset.png")
+        self.page.add_element('br')
         button = self.page.add_button("Change The Picture", self.onpicclick)
 
     def page_toggles(self):
@@ -59,11 +60,8 @@ class DemoPiUi(object):
         
 
     def page_console(self):
-        con = self.ui.console()
+        con = self.ui.console(title="Console", prev_text="Back", onprevclick=self.main_menu)
         con.print_line("Hello Console!")
-        while True:
-            time.sleep(random.uniform(0, 10))
-            con.print_line(str(int(random.uniform(0, 1e16))))
 
     def main_menu(self):
         self.page = self.ui.new_ui_page(title="PiUi")
@@ -82,7 +80,6 @@ class DemoPiUi(object):
         self.ui.done()
 
     def onupclick(self):
-        self.ui.get_location()
         self.title.set_text("Up ")
         print "Up"
 

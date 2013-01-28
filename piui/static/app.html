@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!-- TODO add manifest="/static/manifest.appcache" to html-->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>PiUi</title>
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon" href="static/icon.png">
+
+    <link rel="stylesheet" href="/static/ratchet.css">
+    <script src="/static/ratchet.js"></script>
+    <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
+    <script type="text/javascript" src="/static/piui.js"></script>
+    <script type="text/javascript">
+
+$(document).ready(function() {
+  initPiUi();
+});
+    </script> 
+  <style>
+    .console p {font-family: monospace;color: #fff;font-size:14pt;}
+    .console {background-color: #000;
+              position: fixed;
+              top: 44px;
+              right: 0;
+              bottom: 0;
+              left: 0;
+              overflow: auto;
+              -webkit-transition-property: top, bottom;
+                      transition-property: top, bottom;
+              -webkit-transition-duration: .2s, .2s;  
+                      transition-duration: .2s, .2s;  
+              -webkit-transition-timing-function: linear, linear;
+                      transition-timing-function: linear, linear;
+              -webkit-overflow-scrolling: touch;
+              visibility: hidden;
+            }
+
+      .console > * {
+        -webkit-transform: translateZ(0px);
+                transform: translateZ(0px);
+      }
+
+  </style>
+
+  </head>
+  <body>
+  <header class="bar-title" id="hdr">
+    <h1 class="title" id="title"></h1>
+  </header>
+
+  <div class="content">
+  <div class="" id="padded">
+  <p id="end"></p>
+  </div>
+  </div>
+  <div class="console" id="console">
+  <p id="consoleend"></p>
+  </div>
+
+  </body>
+</html>

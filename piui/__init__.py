@@ -128,15 +128,34 @@ class Handlers(object):
     def __init__(self, lock):
         self._lock = lock
         self._msgs = []
+        self._msgs_since_reload = []
         self._current_page = '/'
         self._current_page_title = ''
         self._current_page_obj = None
         self._in_buffer = []
 
     def index(self):
-        print self._current_page
-        return INDEX_HTML % (self._current_page)
+        raise cherrypy.InternalRedirect('/static/app.html')
+        return None
     index.exposed = True
+
+    def _page_reload(self):
+        # A page reload has occurred.  Push all the msgs_since_reload into
+        # the message queue and then serve the app page.
+        self._lock.acquire()
+        print "Page Reload %d/%d" % (len(self._msgs_since_reload), len(self._msgs))
+
+        if (len(self._msgs_since_reload) > len(self._msgs)):
+            print "External Page Reload"
+            self._msgs = []
+            for e in self._msgs_since_reload:
+                self._msgs.append(e)
+        self._lock.release()
+
+    def init(self):
+        self._page_reload()
+        return 'ok'
+    init.exposed = True
 
     def ui(self):
         return UI_HTML % (self._current_page_title, self._current_page_title)
@@ -171,6 +190,7 @@ class Handlers(object):
     def enqueue(self, msg):
         self._lock.acquire()
         self._msgs.insert(0, msg)
+        self._msgs_since_reload.insert(0, msg)
         if len(self._msgs) > self.MAX_MESSAGES_TO_BUFFER:
             self._msgs.pop()
         self._lock.release()
@@ -202,6 +222,7 @@ class Handlers(object):
     def flush_queue(self):
         self._lock.acquire()
         self._msgs = []
+        self._msgs_since_reload = []
         self._lock.release()
 
     def poll(self):
@@ -224,15 +245,6 @@ class Handlers(object):
         self._in_buffer.append(msg)
         self._lock.release()
     state.exposed = True
-
-
-class PiUiConsole(object):
-
-    def __init__(self, piui):
-        self._piui = piui
-
-    def print_line(self, line):
-        self._piui._handlers.enqueue({"cmd": "print", "msg": line})
 
 
 class PiUiTextbox(object):
@@ -335,11 +347,16 @@ class PiUiPage(object):
         self._inputs = {}
 
     def postPush(self):
+        msg = {'cmd': 'pagepost', 'title': self._title}
         if self._prev_text and self._onprevclick:
           self._prev_id = 'button_' + str(int(random.uniform(0, 1e16)))
-          self._piui._handlers.enqueue({'cmd': 'pagepost',
-              'previd': self._prev_id, 'prevtxt': self._prev_text})
           self._clickables[self._prev_id] = ClickWrapper(self._onprevclick)
+          msg['previd'] = self._prev_id
+          msg['prevtxt'] = self._prev_text
+        self._piui._handlers.enqueue(msg)
+
+    def print_line(self, line):
+        self._piui._handlers.enqueue({"cmd": "print", "msg": line})
 
     def add_textbox(self, text, element="p"):
         txtbox = PiUiTextbox(text, element, self._piui)
@@ -403,9 +420,11 @@ class PiUi(object):
                    'tools.staticdir.dir': img_dir}}
         non_blocking_quickstart(self._handlers, config=conf)
 
-    def console(self):
-        self._handlers.new_page('console')
-        return PiUiConsole(self)
+    def console(self, title='', prev_text=None, onprevclick=None):
+        page = PiUiPage(self, title, prev_text, onprevclick)
+        self._handlers.new_page('console', title=title, page_obj=page)
+        page.postPush()
+        return page
 
     def new_ui_page(self, title='', prev_text=None, onprevclick=None):
         page = PiUiPage(self, title, prev_text, onprevclick)

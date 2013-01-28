@@ -11,37 +11,52 @@ var dispatch = function (msg) {
       return null;
     } else if (msg_json.cmd === "newpage") {
       newpage = msg_json.page;
-      window.location.href = newpage;
+      console.log('newpage');
+      // Reset the dynamic parts of the page back to initial state.
+      $('#hdr').html('<h1 class="title" id="title"></h1>');
+      $('#padded').html('<p id="end"></p>');
+      $('#padded').removeClass('content-padded');
+      $('#console').html('<p id="consoleend"></p>');
+
+      if (newpage === "console") {
+        $('#console').css('visibility', 'visible');
+        $('.content').css('visibility', 'hidden');
+      } else {
+        $('#console').css('visibility', 'hidden');
+        $('.content').css('visibility', 'visible');
+      }
+
       return null;
     } else {
       return msg_json;
     }
 }
 
-var consolePoll = function () {
-  $.get("/poll", {}, function(xml) {
-       setTimeout(function() {consolePoll()}, 0);
-       msg_json = dispatch(xml);
-       if (msg_json != null && msg_json.cmd === "print") {
-           // format and output result
-           $('<p>' + msg_json.msg + '</p>').insertBefore('#console');
-           $('html, body').animate({scrollTop: $(document).height()}, 'fast');
-       }
-     });    
+var initPiUi = function() {
+  console.log("PiUi init");
+  $.get("/init", {}, function(r) {poll();});
 }
 
 var BEFORE = "#end";
 function poll() {
   $.get("/poll", {}, function(xml) {
-       setTimeout(function() {poll()}, 0);
        msg = dispatch(xml);
+       console.log("PiUi msg");
+       console.log(msg);
        if (msg != null) {
-         if (msg.cmd === "pagepost") {
-           $('#hdr').prepend('<a href="#" id="' + msg.previd + '" class="button-prev">' + msg.prevtxt + '</a>');
-           $('#' + msg.previd).click(function(o) {
-              $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
-           });
-           $('#padded').toggleClass('content-padded');
+         if (msg.cmd === "print") {
+           // format and output result
+           $('<p>' + msg.msg + '</p>').insertBefore('#consoleend');
+           $('html, body').animate({scrollTop: $(document).height()}, 'fast');
+         } else if (msg.cmd === "pagepost") {
+           if (msg.previd) {
+             $('#hdr').prepend('<a href="#" id="' + msg.previd + '" class="button-prev">' + msg.prevtxt + '</a>');
+             $('#' + msg.previd).click(function(o) {
+               $.get('/click?eid=' + $(this).attr('id'), {}, function (r) {});
+             });
+             $('#padded').toggleClass('content-padded');
+           }
+           $('#title').append(msg.title);
          } if (msg.cmd === "addelement") {
            $('<' + msg.e + ' id="' + msg.eid + '">' + msg.txt + '</' + msg.e + '>').insertBefore(BEFORE)
          } else if (msg.cmd === "updateinner") {
@@ -85,9 +100,9 @@ function poll() {
             });
          }
        }
+       setTimeout(function() {poll()}, 0);
      });    
 }
 
-window.consolePoll = consolePoll;
-window.poll = poll;
+window.initPiUi = initPiUi;
 }();
