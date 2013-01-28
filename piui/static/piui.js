@@ -34,7 +34,9 @@ var dispatch = function (msg) {
 
 var initPiUi = function() {
   console.log("PiUi init");
-  $.get("/init", {}, function(r) {poll();});
+  console.log(navigator.userAgent);
+  $.get("/init", {},
+      function(r) {poll();});
 }
 
 var BEFORE = "#end";

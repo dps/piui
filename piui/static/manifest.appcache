@@ -1,7 +1,7 @@
 CACHE MANIFEST
 
 CACHE:
-# Offline cache v30
+# Offline cache v39
 # html files
 
 
@@ -13,8 +13,16 @@ CACHE:
 
 NETWORK:
 /init
+/ping
 /poll
 /state
 /click
 /toggle
-/imgs/*
+/imgs/
+http://dylan.local:9999/init
+http://dylan.local:9999/ping
+http://dylan.local:9999/poll
+http://dylan.local:9999/state
+http://dylan.local:9999/click
+http://dylan.local:9999/toggle
+http://dylan.local:9999/imgs/
