@@ -43,89 +43,11 @@ def non_blocking_quickstart(root=None, script_name="", config=None):
     #engine.block()
 
 
-CONSOLE_HTML = ("""
-<html>
-  <head>
-  <style>
-    p {font-family: monospace;color: #fff;font-size:14pt;}
-    body {background-color: #000;}
-  </style>
-
-    <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
-    <script type="text/javascript" src="/static/piui.js"></script>
-    <script type="text/javascript">
-
-$(document).ready(function() {
-  consolePoll();
-});
-    </script> 
-  </head>
-  <body>
-    <p id="console"></p>
-  </body>
-</html>
-""")
-
-INDEX_HTML = """
-<html manifest="static/manifest.appcache">
-  <head>
-
-    <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
-    <script type="text/javascript">
-
-$(document).ready(function() {
-  window.location.href = '%s';
-});
-    </script> 
-  </head>
-  <body>
-  </body>
-</html>
-"""
-
-UI_HTML = ("""
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>%s</title>
-    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <link rel="apple-touch-icon" href="static/icon.png">
-
-    <link rel="stylesheet" href="/static/ratchet.css">
-    <script src="/static/ratchet.js"></script>
-    <script type="text/javascript" src="/static/jquery-1.9.0.min.js"></script>
-    <script type="text/javascript" src="/static/piui.js"></script>
-    <script type="text/javascript">
-
-$(document).ready(function() {
-  poll();
-});
-    </script> 
-  </head>
-  <body>
-  <header class="bar-title" id="hdr">
-    <h1 class="title">%s</h1>
-  </header>
-
-  <div class="content">
-  <div class="" id="padded">
-  <p id="end"></p>
-  </div>
-  </div>
-
-  </body>
-</html>
-""")
-
-
 class Handlers(object):
 
     MAX_MESSAGES_TO_BUFFER = 40
 
-    def __init__(self, lock):
+    def __init__(self, lock, timeout):
         self._lock = lock
         self._msgs = []
         self._msgs_since_reload = []
@@ -133,6 +55,7 @@ class Handlers(object):
         self._current_page_title = ''
         self._current_page_obj = None
         self._in_buffer = []
+        self._timeout = timeout
 
     def index(self):
         raise cherrypy.InternalRedirect('/static/app.html')
@@ -157,18 +80,9 @@ class Handlers(object):
         return 'ok'
     init.exposed = True
 
-    def ui(self):
-        return UI_HTML % (self._current_page_title, self._current_page_title)
-    ui.exposed = True
-
-    def console(self):
-        return CONSOLE_HTML
-    console.exposed = True
-
     def ping(self):
         return "pong"
     ping.exposed = True
-
 
     def click(self, eid):
         if self._current_page_obj:
@@ -228,7 +142,7 @@ class Handlers(object):
     def poll(self):
         waited = 0
         msg = None
-        while waited < 500:
+        while waited < self._timeout:
             self._lock.acquire()
             if not self._msgs == []:
                 msg = self._msgs.pop()
@@ -406,9 +320,9 @@ class PiUiPage(object):
 
 class PiUi(object):
 
-    def __init__(self, img_dir=''):
+    def __init__(self, img_dir='', timeout=500):
         self._lock = threading.Lock()
-        self._handlers = Handlers(self._lock)
+        self._handlers = Handlers(self._lock, timeout=timeout)
         cherrypy.config.update({'server.socket_host': '0.0.0.0',
                                 'server.socket_port': 9999})
         conf = {'/static': 
