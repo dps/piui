@@ -331,7 +331,8 @@ class PiUi(object):
                    'tools.staticdir.content_types': {'appcache': 'text/cache-manifest'}},
                 '/imgs':
                   {'tools.staticdir.on': True,
-                   'tools.staticdir.dir': img_dir}}
+                   'tools.staticdir.dir': img_dir},
+                '/': {'tools.sessions.locking': 'explicit'}}
         non_blocking_quickstart(self._handlers, config=conf)
 
     def console(self, title='', prev_text=None, onprevclick=None):
