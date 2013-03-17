@@ -143,15 +143,12 @@ class Handlers(object):
         waited = 0
         msg = None
         while waited < self._timeout:
-            print '+la'
             self._lock.acquire()
-            print '-la'
             if not self._msgs == []:
                 msg = self._msgs.pop()
             self._lock.release()
             if msg:
                 return je.encode(msg)
-            print 'sleep %d' % waited
             time.sleep(0.01)
             waited = waited + 1
         return je.encode({'cmd': 'timeout'})
