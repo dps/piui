@@ -148,9 +148,12 @@ class Handlers(object):
                 msg = self._msgs.pop()
             self._lock.release()
             if msg:
-                return je.encode(msg)
+                encoded = je.encode(msg)
+                print '-poll()'
+                return encoded
             time.sleep(0.01)
             waited = waited + 1
+        print 'poll()->timeout'
         return je.encode({'cmd': 'timeout'})
     poll.exposed = True
 
