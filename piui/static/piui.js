@@ -43,8 +43,6 @@ var BEFORE = "#end";
 function poll() {
   $.get("/poll", {}, function(xml) {
        msg = dispatch(xml);
-       console.log("PiUi msg");
-       console.log(msg);
        if (msg != null) {
          if (msg.cmd === "print") {
            // format and output result
