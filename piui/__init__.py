@@ -328,7 +328,8 @@ class PiUi(object):
         self._lock = threading.Lock()
         self._handlers = Handlers(self._lock, timeout=timeout)
         cherrypy.config.update({'server.socket_host': '0.0.0.0',
-                                'server.socket_port': 9999})
+                                'server.socket_port': 9999,
+                                'server.thread_pool_max': -1})
         conf = {'/static': 
                   {'tools.staticdir.on': True,
                    'tools.staticdir.dir': os.path.join(current_dir, 'static'),
