@@ -140,6 +140,7 @@ class Handlers(object):
         self._lock.release()
 
     def poll(self):
+        start = time.time()
         waited = 0
         msg = None
         while waited < self._timeout:
@@ -149,7 +150,7 @@ class Handlers(object):
             self._lock.release()
             if msg:
                 encoded = je.encode(msg)
-                print '-poll()'
+                print '-poll() ' + str(time.time() - start)
                 return encoded
             time.sleep(0.01)
             waited = waited + 1
