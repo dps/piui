@@ -1,11 +1,24 @@
 #!/usr/bin/python
 
 import cherrypy
+import json
 import subprocess
 
 import os.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
+APP_CONFIG_FILE = "supervisor.conf"
+
+def parse_config():
+    apps = []
+    try:
+      conf_file = file(current_dir + '/' + APP_CONFIG_FILE, 'r')
+      for line in conf_file.readlines():
+        name, loc = line.split(' ')
+        apps.append(name, loc)
+    except Error, e:
+        pass
+    return apps
 
 class ProcHandlers(object):
 
@@ -43,6 +56,23 @@ class SupHandlers(object):
     def w(self):
         return subprocess.check_output('w')
     w.exposed = True
+
+    def listapps(self):
+        apps = parse_config()
+        app_names = [a[1] for a in apps]
+        return json.JSONEncoder().encode(app_names)
+    listapps.exposed = True
+
+    def startapp(self, appname):
+        apps = {}
+        for (name, loc) in parse_config():
+            apps[name] = loc
+        if apps.has_key(appname):
+            loc = apps[name]
+            subprocess.Popen("python " + loc, shell=True)
+            return 'ok'
+        return 'not found'
+    startapp.exposed = True
 
     def ping(self):
         return 'pong'
