@@ -15,7 +15,7 @@ def parse_config():
       conf_file = file(current_dir + '/' + APP_CONFIG_FILE, 'r')
       for line in conf_file.readlines():
         name, loc = line.split(' ')
-        apps.append(name, loc)
+        apps.append((name, loc))
     except IOError:
         pass
     return apps
@@ -59,7 +59,7 @@ class SupHandlers(object):
 
     def listapps(self):
         apps = parse_config()
-        app_names = [a[1] for a in apps]
+        app_names = [a[0] for a in apps]
         return json.JSONEncoder().encode(app_names)
     listapps.exposed = True
 
@@ -69,8 +69,9 @@ class SupHandlers(object):
             apps[name] = loc
         if apps.has_key(appname):
             loc = apps[name]
-            subprocess.Popen("python " + loc, shell=True)
-            return 'ok'
+            cmd_line = 'python ' + loc
+            subprocess.Popen(cmd_line, shell=True)
+            return 'ok ' + cmd_line
         return 'not found'
     startapp.exposed = True
 
