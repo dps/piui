@@ -8,6 +8,7 @@ import os.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 APP_CONFIG_FILE = "supervisor.conf"
+running_app = None
 
 def parse_config():
     apps = []
@@ -64,16 +65,28 @@ class SupHandlers(object):
     listapps.exposed = True
 
     def startapp(self, appname):
+        global running_app
+        if (running_app):
+            running_app.kill()
         apps = {}
         for (name, loc) in parse_config():
             apps[name] = loc
         if apps.has_key(appname):
             loc = apps[name]
             cmd_line = 'python ' + loc
-            subprocess.Popen(cmd_line, shell=True)
+            running_app = subprocess.Popen(cmd_line, shell=True)
             return 'ok ' + cmd_line
         return 'not found'
     startapp.exposed = True
+
+    def killapp(self):
+        global running_app
+        if (running_app):
+            running_app.kill()
+            return 'killed'
+        else:
+            return 'not found'
+    killapp.exposed = True
 
     def ping(self):
         return 'pong'
