@@ -16,7 +16,7 @@ def parse_config():
       for line in conf_file.readlines():
         name, loc = line.split(' ')
         apps.append(name, loc)
-    except Error, e:
+    except IOError:
         pass
     return apps
 
