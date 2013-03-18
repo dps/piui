@@ -140,8 +140,6 @@ class Handlers(object):
         self._lock.release()
 
     def poll(self):
-        start = time.time()
-        print '+poll()'
         waited = 0
         msg = None
         while waited < self._timeout:
@@ -151,11 +149,9 @@ class Handlers(object):
             self._lock.release()
             if msg:
                 encoded = je.encode(msg)
-                print '-poll() ' + str(time.time() - start)
                 return encoded
             time.sleep(0.01)
             waited = waited + 1
-        print 'poll()->timeout '  + str(time.time() - start)
         return je.encode({'cmd': 'timeout'})
     poll.exposed = True
 
