@@ -81,6 +81,13 @@ python piui_demo.py
 Connect your phone to the wifi AP and navigate to 'http://piui/'.
 
 
+Known limitations / work in progress
+====================================
+
+- only works for one concurrently connected phone right now
+- upon reconnection, all historical updates to page elements are made in sequence - should collapse updates to the same element
+
+
 Copyright and License (BSD 2-clause)
 ====================================
 
