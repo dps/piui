@@ -104,6 +104,7 @@ class Handlers(object):
     def enqueue(self, msg):
         self._lock.acquire()
         self._msgs.insert(0, msg)
+        # TODO: collapse updates to the same element
         self._msgs_since_reload.insert(0, msg)
         if len(self._msgs) > self.MAX_MESSAGES_TO_BUFFER:
             self._msgs.pop()

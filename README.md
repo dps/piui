@@ -6,9 +6,9 @@ Add a UI to your standalone Raspberry Pi project using your Android or iOS phone
 Demo
 ====
 
-[Watch Demo Video](http://www.youtube.com/watch?v=DV2i6T6mAgI)
+[Watch Demo Video](http://youtu.be/2ay0vuW6aNY)
 
-![Demo Video Screengrab](http://blog.davidsingleton.org/static/ytpiui.png)
+[![Demo Video Screengrab](http://blog.davidsingleton.org/static/ytpiui.png)](http://youtu.be/2ay0vuW6aNY)
 
 
 Install PiUi
