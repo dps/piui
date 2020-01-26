@@ -10,7 +10,7 @@ class PiUiTestCase(unittest.TestCase):
         self._ui = PiUi("Test", timeout=1)
 
     def tearDown(self):
-        print "tearDown"
+        print("tearDown")
         self._ui.exit()
 
     def http_get(self, rel_url):
