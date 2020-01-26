@@ -1,6 +1,6 @@
 import json
 import unittest
-import urllib2
+import urllib
 
 from piui import PiUi
 
@@ -14,8 +14,8 @@ class PiUiTestCase(unittest.TestCase):
         self._ui.exit()
 
     def http_get(self, rel_url):
-        handler = urllib2.urlopen('http://localhost:9999/' + rel_url)
-        return handler.getcode(), handler.read()
+        handler = urllib.request.urlopen('http://localhost:9999' + rel_url)
+        return handler.getcode(), handler.read().decode()
 
     def click(self):
         self._clicked = True
