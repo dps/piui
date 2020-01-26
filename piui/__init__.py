@@ -66,10 +66,10 @@ class Handlers(object):
         # A page reload has occurred.  Push all the msgs_since_reload into
         # the message queue and then serve the app page.
         self._lock.acquire()
-        print "Page Reload %d/%d" % (len(self._msgs_since_reload), len(self._msgs))
+        print("Page Reload %d/%d" % (len(self._msgs_since_reload), len(self._msgs)))
 
         if (len(self._msgs_since_reload) > len(self._msgs)):
-            print "External Page Reload"
+            print("External Page Reload")
             self._msgs = []
             for e in self._msgs_since_reload:
                 self._msgs.append(e)
@@ -353,7 +353,7 @@ class PiUi(object):
 
     def get_location(self):
         text = self._handlers.enqueue_and_result({'cmd': 'geolocation'})
-        print text
+        print(text)
         return text
 
     def done(self):
