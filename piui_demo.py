@@ -81,16 +81,16 @@ class DemoPiUi(object):
 
     def onupclick(self):
         self.title.set_text("Up ")
-        print "Up"
+        print("Up")
 
     def ondownclick(self):
         self.title.set_text("Down")
-        print "Down"
+        print("Down")
 
     def onhelloclick(self):
-        print "onstartclick"
+        print("onstartclick")
         self.title.set_text("Hello " + self.txt.get_text())
-        print "Start"
+        print("Start")
 
     def onpicclick(self):
         if self.src == "sunset.png":
